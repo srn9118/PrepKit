@@ -1,9 +1,11 @@
 import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   return (
     <Layout>
@@ -69,7 +71,7 @@ const Dashboard: React.FC = () => {
           <div className="card p-6">
             <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
             <div className="space-y-3">
-              <button className="w-full text-left px-4 py-3 bg-primary-50 hover:bg-primary-100 rounded-lg transition">
+              <button onClick={() => navigate('/planner')} className="w-full text-left px-4 py-3 bg-primary-50 hover:bg-primary-100 rounded-lg transition">
                 <div className="flex items-center">
                   <span className="text-2xl mr-3">📝</span>
                   <div>
@@ -79,7 +81,7 @@ const Dashboard: React.FC = () => {
                 </div>
               </button>
 
-              <button className="w-full text-left px-4 py-3 bg-primary-50 hover:bg-primary-100 rounded-lg transition">
+              <button onClick={() => navigate('/recipes')} className="w-full text-left px-4 py-3 bg-primary-50 hover:bg-primary-100 rounded-lg transition">
                 <div className="flex items-center">
                   <span className="text-2xl mr-3">🍳</span>
                   <div>
@@ -89,7 +91,7 @@ const Dashboard: React.FC = () => {
                 </div>
               </button>
 
-              <button className="w-full text-left px-4 py-3 bg-primary-50 hover:bg-primary-100 rounded-lg transition">
+              <button onClick={() => navigate('/shopping-list')} className="w-full text-left px-4 py-3 bg-primary-50 hover:bg-primary-100 rounded-lg transition">
                 <div className="flex items-center">
                   <span className="text-2xl mr-3">🛒</span>
                   <div>
