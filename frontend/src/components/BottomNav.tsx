@@ -15,6 +15,7 @@ const BottomNav: React.FC = () => {
         { label: 'Home', path: '/dashboard', icon: '🏠' },
         { label: 'Recipes', path: '/recipes', icon: '🍳' },
         { label: 'Planner', path: '/planner', icon: '📅' },
+        { label: 'Prices', path: '/prices', icon: '💰' },
         { label: 'Profile', path: '/profile', icon: '👤' },
     ];
 
@@ -25,7 +26,7 @@ const BottomNav: React.FC = () => {
     return (
         <nav className="fixed bottom-0 left-0 right-0 bg-surface border-t border-border z-50 safe-area-bottom">
             <div className="max-w-md mx-auto">
-                <div className="grid grid-cols-4 h-16">
+                <div className="grid grid-cols-5 h-16">
                     {navItems.map((item) => {
                         const active = isActive(item.path);
                         return (
@@ -33,8 +34,8 @@ const BottomNav: React.FC = () => {
                                 key={item.path}
                                 onClick={() => navigate(item.path)}
                                 className={`flex flex-col items-center justify-center gap-1 transition-all ${active
-                                        ? 'text-primary'
-                                        : 'text-text-secondary hover:text-text-primary'
+                                    ? 'text-primary'
+                                    : 'text-text-secondary hover:text-text-primary'
                                     }`}
                             >
                                 <span className="text-2xl">{item.icon}</span>

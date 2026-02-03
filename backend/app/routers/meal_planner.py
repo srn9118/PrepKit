@@ -9,7 +9,8 @@ from app.schemas.meal_plan import (
     MealPlanCreate,
     MealPlanUpdate,
     MealPlanResponse,
-    ShoppingListResponse
+    ShoppingListResponse,
+    OptimizedShoppingListResponse
 )
 from app.services.meal_service import MealService
 
@@ -136,3 +137,85 @@ async def generate_shopping_list(
     
     service = MealService(db)
     return await service.generate_shopping_list(current_user.id, start_date, end_date)
+
+
+@router.get("/shopping-list/optimized", response_model=OptimizedShoppingListResponse)
+async def get_optimized_shopping_list(
+    start_date: date = Query(..., description="Start date (YYYY-MM-DD)"),
+    end_date: date = Query(..., description="End date (YYYY-MM-DD)"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Get optimized shopping list with price recommendations.
+    
+    This endpoint:
+    1. Generates shopping list for the date range
+    2. Finds cheapest price for each ingredient (respecting your exclusions)
+    3. Calculates total cost per supermarket
+    4. Provides recommendations for where to shop
+    
+    **Benefits:**
+    - Save money by comparing prices across supermarkets
+    - Respect your preferences (exclusions)
+    - Get clear shopping distribution recommendations
+    
+    **Requirements:**
+    - Users need to add prices for ingredients (via /api/prices)
+    - Items without prices will show but won't have recommendations
+    
+    - **start_date**: Beginning of date range (ISO format: YYYY-MM-DD)
+    - **end_date**: End of date range (ISO format: YYYY-MM-DD)
+    """
+    
+    # Validate date range
+    if end_date < start_date:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="end_date must be greater than or equal to start_date"
+        )
+    
+    # Get regular shopping list
+    service = MealService(db)
+    shopping_list_response = await service.generate_shopping_list(current_user.id, start_date, end_date)
+    
+    # Optimize using optimization service
+    from app.services import optimization_service
+    optimized = optimization_service.optimize_shopping_list(
+        db,
+        shopping_list_response.items,
+        current_user.id
+    )
+    
+    # Convert to response schema
+    return OptimizedShoppingListResponse(
+        start_date=start_date,
+        end_date=end_date,
+        total_items=optimized.total_items,
+        items_with_prices=optimized.items_with_prices,
+        items=[
+            {
+                "ingredient_id": item.ingredient_id,
+                "ingredient_name": item.ingredient_name,
+                "total_amount": item.total_amount,
+                "unit": item.unit,
+                "cheapest_price": float(item.cheapest_price) if item.cheapest_price else None,
+                "cheapest_supermarket": item.cheapest_supermarket,
+                "cheapest_supermarket_id": item.cheapest_supermarket_id,
+                "total_cost": float(item.total_cost) if item.total_cost else None,
+            }
+            for item in optimized.items
+        ],
+        supermarket_totals=[
+            {
+                "supermarket_id": total.supermarket_id,
+                "supermarket_name": total.supermarket_name,
+                "total_price": float(total.total_price),
+                "item_count": total.item_count,
+            }
+            for total in optimized.supermarket_totals
+        ],
+        total_optimized=float(optimized.total_optimized),
+        recommended_distribution=optimized.recommended_distribution,
+        potential_savings=optimized.potential_savings
+    )

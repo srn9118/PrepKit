@@ -1,16 +1,28 @@
 import React, { useState, useEffect } from 'react';
-import { useLocation, Link } from 'react-router-dom';
+import { useLocation, Link, useNavigate } from 'react-router-dom';
 import { mealPlanApi } from '../api/meal-plan';
+import { pricesApi } from '../api/prices';
 import type { ShoppingListResponse } from '../types/meal-plan';
+import type { OptimizedShoppingListResponse, IngredientPrice } from '../types/price';
 import Layout from '../components/Layout';
 import TopBar from '../components/TopBar';
+import { SupermarketBadge } from '../components/SupermarketBadge';
+import { PriceComparisonModal } from '../components/PriceComparisonModal';
 import { getMonday, formatDate, addDays } from '../utils/dateHelpers';
+
+type ViewMode = 'normal' | 'optimized';
 
 const ShoppingList: React.FC = () => {
     const location = useLocation();
+    const navigate = useNavigate();
     const [shoppingList, setShoppingList] = useState<ShoppingListResponse | null>(null);
+    const [optimizedList, setOptimizedList] = useState<OptimizedShoppingListResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [checkedItems, setCheckedItems] = useState<Set<number>>(new Set());
+    const [viewMode, setViewMode] = useState<ViewMode>('normal');
+    const [showPriceModal, setShowPriceModal] = useState(false);
+    const [selectedIngredientPrices, setSelectedIngredientPrices] = useState<IngredientPrice[]>([]);
+    const [selectedIngredientName, setSelectedIngredientName] = useState('');
 
     // Get dates from location state or default to current week
     const defaultStart = getMonday(new Date());
@@ -30,8 +42,12 @@ const ShoppingList: React.FC = () => {
     const loadShoppingList = async () => {
         setLoading(true);
         try {
-            const data = await mealPlanApi.getShoppingList(startDate, endDate);
-            setShoppingList(data);
+            const [normalData, optimizedData] = await Promise.all([
+                mealPlanApi.getShoppingList(startDate, endDate),
+                mealPlanApi.getOptimizedShoppingList(startDate, endDate),
+            ]);
+            setShoppingList(normalData);
+            setOptimizedList(optimizedData);
         } catch (error) {
             console.error('Failed to load shopping list:', error);
         } finally {
@@ -57,6 +73,17 @@ const ShoppingList: React.FC = () => {
 
     const handlePrint = () => {
         window.print();
+    };
+
+    const handleViewPriceComparison = async (ingredientId: number, ingredientName: string) => {
+        try {
+            const prices = await pricesApi.getForIngredient(ingredientId);
+            setSelectedIngredientPrices(prices);
+            setSelectedIngredientName(ingredientName);
+            setShowPriceModal(true);
+        } catch (error) {
+            console.error('Error loading prices:', error);
+        }
     };
 
     if (loading) {
@@ -99,187 +126,292 @@ const ShoppingList: React.FC = () => {
         checkedItems.has(item.ingredient_id)
     );
 
+    const hasPrices = optimizedList && optimizedList.items_with_prices > 0;
+
     return (
         <Layout>
             <TopBar
                 title="Shopping List"
                 showBack
-                actions={
+                rightButton={
                     <button
                         onClick={handlePrint}
-                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-elevated transition-colors print:hidden"
+                        className="text-text-primary hover:text-primary transition-colors print:hidden"
+                        title="Print"
                     >
                         <span className="text-xl">🖨️</span>
                     </button>
                 }
             />
 
-            <div className="space-y-4 mt-6">
-                {/* Week Range */}
-                <div className="card">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <p className="text-xs text-text-secondary uppercase tracking-wide">
-                                Week Range
-                            </p>
-                            <p className="text-sm font-semibold text-text-primary mt-1">
-                                {new Date(startDate).toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                })}{' '}
-                                -{' '}
-                                {new Date(endDate).toLocaleDateString('en-US', {
-                                    month: 'short',
-                                    day: 'numeric',
-                                    year: 'numeric',
-                                })}
-                            </p>
-                        </div>
-                        <div className="text-right">
-                            <p className="text-xs text-text-secondary uppercase tracking-wide">
-                                Progress
-                            </p>
-                            <p className="text-2xl font-bold text-primary mt-1">
-                                {Math.round((checkedCount / totalCount) * 100)}%
-                            </p>
-                        </div>
-                    </div>
-
-                    {/* Progress Bar */}
-                    <div className="mt-3 h-2 bg-surface-elevated rounded-full overflow-hidden">
-                        <div
-                            className="h-full bg-primary transition-all duration-500 rounded-full"
-                            style={{ width: `${(checkedCount / totalCount) * 100}%` }}
-                        />
-                    </div>
-                </div>
-
-                {/* Summary Stats */}
-                <div className="grid grid-cols-2 gap-3">
-                    <div className="card text-center">
-                        <p className="text-sm text-text-secondary">Total Items</p>
-                        <p className="text-3xl font-bold text-text-primary mt-1">
-                            {totalCount}
-                        </p>
-                    </div>
-                    <div className="card text-center">
-                        <p className="text-sm text-text-secondary">Checked</p>
-                        <p className="text-3xl font-bold text-primary mt-1">
-                            {checkedCount}
-                        </p>
-                    </div>
-                </div>
-
-                {/* Clear Checked Button */}
-                {checkedCount > 0 && (
+            <div className="space-y-4">
+                {/* View Toggle */}
+                <div className="card p-1 flex gap-1 print:hidden">
                     <button
-                        onClick={clearCheckedItems}
-                        className="w-full py-3 bg-error/20 text-error font-semibold rounded-xl hover:bg-error/30 transition-colors"
+                        onClick={() => setViewMode('normal')}
+                        className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === 'normal'
+                            ? 'bg-primary text-white'
+                            : 'text-text-primary hover:bg-surface-elevated'
+                            }`}
                     >
-                        Clear {checkedCount} Checked Item{checkedCount !== 1 ? 's' : ''}
+                        📋 Normal
                     </button>
-                )}
-
-                {/* Unchecked Items */}
-                {uncheckedItems.length > 0 && (
-                    <div>
-                        <h2 className="text-lg font-bold text-text-primary mb-3">
-                            To Buy ({uncheckedItems.length})
-                        </h2>
-                        <div className="space-y-2">
-                            {uncheckedItems.map((item) => (
-                                <div
-                                    key={item.ingredient_id}
-                                    onClick={() => toggleItem(item.ingredient_id)}
-                                    className="card flex items-center gap-4 cursor-pointer hover:bg-surface-elevated transition-all active:scale-[0.98]"
-                                >
-                                    {/* Checkbox */}
-                                    <div className="w-6 h-6 rounded-lg border-2 border-border flex items-center justify-center flex-shrink-0">
-                                        {/* Empty */}
-                                    </div>
-
-                                    {/* Item Info */}
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-semibold text-text-primary">
-                                            {item.ingredient_name}
-                                        </p>
-                                    </div>
-
-                                    {/* Amount */}
-                                    <div className="font-bold text-primary text-right">
-                                        {item.total_amount} {item.unit}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Checked Items */}
-                {checkedItemsList.length > 0 && (
-                    <div>
-                        <h2 className="text-lg font-bold text-text-secondary mb-3">
-                            Checked ({checkedItemsList.length})
-                        </h2>
-                        <div className="space-y-2">
-                            {checkedItemsList.map((item) => (
-                                <div
-                                    key={item.ingredient_id}
-                                    onClick={() => toggleItem(item.ingredient_id)}
-                                    className="card flex items-center gap-4 cursor-pointer opacity-50 hover:opacity-70 transition-all active:scale-[0.98]"
-                                >
-                                    {/* Checkbox - Checked */}
-                                    <div className="w-6 h-6 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-                                        <span className="text-white text-sm">✓</span>
-                                    </div>
-
-                                    {/* Item Info */}
-                                    <div className="flex-1 min-w-0">
-                                        <p className="font-semibold text-text-secondary line-through">
-                                            {item.ingredient_name}
-                                        </p>
-                                    </div>
-
-                                    {/* Amount */}
-                                    <div className="font-bold text-text-secondary line-through text-right">
-                                        {item.total_amount} {item.unit}
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                )}
-
-                {/* Tips Card */}
-                <div className="card bg-primary/10 border border-primary/20">
-                    <div className="flex items-start gap-3">
-                        <span className="text-2xl">💡</span>
-                        <div>
-                            <h3 className="font-bold text-text-primary mb-2">
-                                Shopping Tips
-                            </h3>
-                            <ul className="text-sm text-text-secondary space-y-1">
-                                <li>• Check your pantry before shopping</li>
-                                <li>• Group items by store section</li>
-                                <li>• Buy fresh ingredients closer to meal day</li>
-                            </ul>
-                        </div>
-                    </div>
+                    <button
+                        onClick={() => setViewMode('optimized')}
+                        className={`flex-1 px-4 py-2 rounded-lg text-sm font-medium transition-all ${viewMode === 'optimized'
+                            ? 'bg-primary text-white'
+                            : 'text-text-primary hover:bg-surface-elevated'
+                            }`}
+                    >
+                        💰 Optimizada
+                    </button>
                 </div>
+
+                {/* Week Range */}
+                <div className="card p-4">
+                    <p className="text-sm text-text-secondary">
+                        {new Date(startDate).toLocaleDateString('es-ES', {
+                            day: 'numeric',
+                            month: 'long',
+                        })}{' '}
+                        -{' '}
+                        {new Date(endDate).toLocaleDateString('es-ES', {
+                            day: 'numeric',
+                            month: 'long',
+                            year: 'numeric',
+                        })}
+                    </p>
+                </div>
+
+                {/* NORMAL VIEW */}
+                {viewMode === 'normal' && (
+                    <>
+                        {/* Progress */}
+                        <div className="card p-4">
+                            <div className="flex items-center justify-between mb-2">
+                                <span className="text-sm text-text-secondary">Progress</span>
+                                <span className="text-sm font-medium text-text-primary">
+                                    {checkedCount}/{totalCount} items
+                                </span>
+                            </div>
+                            <div className="w-full bg-surface-elevated rounded-full h-2">
+                                <div
+                                    className="bg-primary h-2 rounded-full transition-all duration-300"
+                                    style={{
+                                        width: `${totalCount > 0 ? (checkedCount / totalCount) * 100 : 0}%`,
+                                    }}
+                                />
+                            </div>
+                        </div>
+
+                        {/* Unchecked Items */}
+                        {uncheckedItems.length > 0 && (
+                            <div className="card p-4">
+                                <h3 className="font-semibold text-text-primary mb-3">
+                                    To Buy ({uncheckedItems.length})
+                                </h3>
+                                <div className="space-y-2">
+                                    {uncheckedItems.map((item) => (
+                                        <div
+                                            key={item.ingredient_id}
+                                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-elevated transition-colors"
+                                        >
+                                            <button
+                                                onClick={() => toggleItem(item.ingredient_id)}
+                                                className="w-6 h-6 flex-shrink-0 rounded border-2 border-surface-elevated hover:border-primary transition-all"
+                                            />
+                                            <div className="flex-1">
+                                                <p className="text-text-primary font-medium">
+                                                    {item.ingredient_name}
+                                                </p>
+                                                <p className="text-sm text-text-secondary">
+                                                    {item.total_amount.toFixed(0)} {item.unit}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Checked Items */}
+                        {checkedItemsList.length > 0 && (
+                            <div className="card p-4">
+                                <div className="flex items-center justify-between mb-3">
+                                    <h3 className="font-semibold text-text-primary">
+                                        Checked ({checkedItemsList.length})
+                                    </h3>
+                                    <button
+                                        onClick={clearCheckedItems}
+                                        className="text-xs text-red-400 hover:text-red-300 transition-colors"
+                                    >
+                                        Clear checked
+                                    </button>
+                                </div>
+                                <div className="space-y-2">
+                                    {checkedItemsList.map((item) => (
+                                        <div
+                                            key={item.ingredient_id}
+                                            className="flex items-center gap-3 p-2 rounded-lg hover:bg-surface-elevated transition-colors opacity-50"
+                                        >
+                                            <button
+                                                onClick={() => toggleItem(item.ingredient_id)}
+                                                className="w-6 h-6 flex-shrink-0 rounded bg-primary border-2 border-primary flex items-center justify-center transition-all"
+                                            >
+                                                <span className="text-white text-xs">✓</span>
+                                            </button>
+                                            <div className="flex-1">
+                                                <p className="text-text-primary font-medium line-through">
+                                                    {item.ingredient_name}
+                                                </p>
+                                                <p className="text-sm text-text-secondary line-through">
+                                                    {item.total_amount.toFixed(0)} {item.unit}
+                                                </p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {/* OPTIMIZED VIEW */}
+                {viewMode === 'optimized' && (
+                    <>
+                        {!hasPrices ? (
+                            <div className="card p-6 text-center">
+                                <div className="text-6xl mb-4">💰</div>
+                                <h3 className="text-xl font-bold text-text-primary mb-2">
+                                    No prices added yet
+                                </h3>
+                                <p className="text-text-secondary mb-4">
+                                    Add prices in the Prices tab 💰 to see price recommendations and save money
+                                </p>
+                                <button
+                                    onClick={() => navigate('/prices')}
+                                    className="btn-primary inline-block"
+                                >
+                                    Go to Prices
+                                </button>
+                            </div>
+                        ) : (
+                            <>
+                                {/* Recommendation Card */}
+                                <div className="card p-4 bg-primary/10 border border-primary/30">
+                                    <h3 className="font-semibold text-primary mb-2">💡 Recommendation</h3>
+                                    <p className="text-sm text-text-primary">
+                                        {optimizedList.recommended_distribution}
+                                    </p>
+                                    {optimizedList.potential_savings && (
+                                        <p className="text-xs text-text-secondary mt-2">
+                                            {optimizedList.potential_savings}
+                                        </p>
+                                    )}
+                                </div>
+
+                                {/* Supermarket Totals */}
+                                {optimizedList.supermarket_totals.length > 0 && (
+                                    <div className="card p-4">
+                                        <h3 className="font-semibold text-text-primary mb-3">
+                                            Totals by Supermarket
+                                        </h3>
+                                        <div className="space-y-2">
+                                            {optimizedList.supermarket_totals.map((total) => (
+                                                <div
+                                                    key={total.supermarket_id}
+                                                    className="flex items-center justify-between p-3 rounded-lg bg-surface-elevated"
+                                                >
+                                                    <div className="flex items-center gap-2">
+                                                        <SupermarketBadge name={total.supermarket_name} />
+                                                        <span className="text-xs text-text-secondary">
+                                                            ({total.item_count} items)
+                                                        </span>
+                                                    </div>
+                                                    <span className="text-lg font-bold text-primary">
+                                                        €{Number(total.total_price).toFixed(2)}
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </div>
+                                        <div className="mt-3 pt-3 border-t border-surface-elevated flex items-center justify-between">
+                                            <span className="font-semibold text-text-primary">Total</span>
+                                            <span className="text-xl font-bold text-primary">
+                                                €{Number(optimizedList.total_optimized).toFixed(2)}
+                                            </span>
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Optimized Items List */}
+                                <div className="card p-4">
+                                    <h3 className="font-semibold text-text-primary mb-3">
+                                        Shopping List ({optimizedList.total_items} items)
+                                    </h3>
+                                    <div className="space-y-2">
+                                        {optimizedList.items.map((item) => (
+                                            <div
+                                                key={item.ingredient_id}
+                                                className="p-3 rounded-lg bg-surface-elevated"
+                                            >
+                                                <div className="flex items-start justify-between mb-2">
+                                                    <div className="flex-1">
+                                                        <p className="font-medium text-text-primary">
+                                                            {item.ingredient_name}
+                                                        </p>
+                                                        <p className="text-sm text-text-secondary">
+                                                            {item.total_amount.toFixed(0)} {item.unit}
+                                                        </p>
+                                                    </div>
+                                                    {item.cheapest_price && (
+                                                        <div className="text-right">
+                                                            <p className="text-lg font-bold text-primary">
+                                                                €{Number(item.total_cost).toFixed(2)}
+                                                            </p>
+                                                            <p className="text-xs text-text-secondary">
+                                                                €{Number(item.cheapest_price).toFixed(2)}/{item.unit}
+                                                            </p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                {item.cheapest_supermarket ? (
+                                                    <div className="flex items-center justify-between">
+                                                        <SupermarketBadge name={item.cheapest_supermarket} />
+                                                        <button
+                                                            onClick={() =>
+                                                                handleViewPriceComparison(
+                                                                    item.ingredient_id,
+                                                                    item.ingredient_name
+                                                                )
+                                                            }
+                                                            className="text-xs text-primary hover:underline"
+                                                        >
+                                                            Compare prices
+                                                        </button>
+                                                    </div>
+                                                ) : (
+                                                    <p className="text-xs text-text-secondary italic">
+                                                        No prices available
+                                                    </p>
+                                                )}
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+                    </>
+                )}
             </div>
 
-            {/* Print Styles */}
-            <style>{`
-        @media print {
-          body {
-            background: white !important;
-          }
-          .card {
-            background: white !important;
-            border: 1px solid #ccc !important;
-          }
-        }
-      `}</style>
+            {/* Price Comparison Modal */}
+            {showPriceModal && (
+                <PriceComparisonModal
+                    ingredientName={selectedIngredientName}
+                    prices={selectedIngredientPrices}
+                    onClose={() => setShowPriceModal(false)}
+                />
+            )}
         </Layout>
     );
 };

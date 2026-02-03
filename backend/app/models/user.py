@@ -40,3 +40,6 @@ class User(Base):
     recipes = relationship("Recipe", back_populates="author", cascade="all, delete-orphan")
     ingredients = relationship("Ingredient", back_populates="creator")
     meal_plans = relationship("MealPlanItem", back_populates="user", cascade="all, delete-orphan")
+    ingredient_prices = relationship("IngredientPrice", back_populates="user", cascade="all, delete-orphan")
+    ingredient_exclusions = relationship("IngredientExclusion", back_populates="user", cascade="all, delete-orphan")
+

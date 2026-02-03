@@ -70,3 +70,39 @@ class ShoppingListResponse(BaseModel):
     end_date: date
     items: List[ShoppingListItem]
     total_items: int
+
+
+# ==================== OPTIMIZED SHOPPING LIST SCHEMAS ====================
+
+class OptimizedShoppingListItem(BaseModel):
+    """Shopping list item with price optimization"""
+    ingredient_id: int
+    ingredient_name: str
+    total_amount: float
+    unit: str
+    cheapest_price: Optional[float] = None  # €/unit
+    cheapest_supermarket: Optional[str] = None
+    cheapest_supermarket_id: Optional[int] = None
+    total_cost: Optional[float] = None  # total_amount * cheapest_price
+
+
+class SupermarketTotal(BaseModel):
+    """Total cost breakdown per supermarket"""
+    supermarket_id: int
+    supermarket_name: str
+    total_price: float  # Total € for this supermarket
+    item_count: int  # Number of items to buy here
+
+
+class OptimizedShoppingListResponse(BaseModel):
+    """Complete optimized shopping list with recommendations"""
+    start_date: date
+    end_date: date
+    total_items: int
+    items_with_prices: int  # Number of items that have prices
+    items: List[OptimizedShoppingListItem]
+    supermarket_totals: List[SupermarketTotal]
+    total_optimized: float  # Total cost if following recommendations
+    recommended_distribution: str  # Human-readable recommendation
+    potential_savings: Optional[str] = None  # e.g., "optimized 10/12 items"
+

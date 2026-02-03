@@ -10,6 +10,7 @@ import CreateRecipe from './pages/CreateRecipe';
 import MealPlanner from './pages/MealPlanner';
 import ShoppingList from './pages/ShoppingList';
 import Profile from './pages/Profile';
+import { PriceManager } from './pages/PriceManager';
 
 function App() {
   return (
@@ -57,6 +58,14 @@ function App() {
             element={
               <ProtectedRoute>
                 <Profile />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/prices"
+            element={
+              <ProtectedRoute>
+                <PriceManager />
               </ProtectedRoute>
             }
           />

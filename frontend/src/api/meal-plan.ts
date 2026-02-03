@@ -5,6 +5,7 @@ import type {
     UpdateMealPlanData,
     ShoppingListResponse,
 } from '../types/meal-plan';
+import type { OptimizedShoppingListResponse } from '../types/price';
 
 export const mealPlanApi = {
     // Get meal plan for date range
@@ -35,6 +36,14 @@ export const mealPlanApi = {
     // Generate shopping list
     getShoppingList: async (startDate: string, endDate: string) => {
         const response = await apiClient.get<ShoppingListResponse>('/api/planner/shopping-list', {
+            params: { start_date: startDate, end_date: endDate },
+        });
+        return response.data;
+    },
+
+    // Get optimized shopping list with price recommendations
+    getOptimizedShoppingList: async (startDate: string, endDate: string) => {
+        const response = await apiClient.get<OptimizedShoppingListResponse>('/api/planner/shopping-list/optimized', {
             params: { start_date: startDate, end_date: endDate },
         });
         return response.data;

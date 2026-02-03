@@ -36,6 +36,9 @@ class Ingredient(Base):
     # Relationships
     creator = relationship("User", back_populates="ingredients")
     recipe_ingredients = relationship("RecipeIngredient", back_populates="ingredient", cascade="all, delete-orphan")
+    prices = relationship("IngredientPrice", back_populates="ingredient", cascade="all, delete-orphan")
+    exclusions = relationship("IngredientExclusion", back_populates="ingredient", cascade="all, delete-orphan")
+
 
 
 class Recipe(Base):
