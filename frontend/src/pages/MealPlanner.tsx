@@ -4,16 +4,17 @@ import { mealPlanApi } from '../api/meal-plan';
 import type { MealPlanItem } from '../types/meal-plan';
 import { MealType } from '../types/meal-plan';
 import Layout from '../components/Layout';
-import WeeklyCalendar from '../components/WeeklyCalendar';
+import TopBar from '../components/TopBar';
 import AddMealModal from '../components/AddMealModal';
-import { getMonday, formatDate, addDays, getWeekRangeString } from '../utils/dateHelpers';
+import { getMonday, formatDate, addDays, getDayName, getDayNumber } from '../utils/dateHelpers';
 
 const MealPlanner: React.FC = () => {
     const [currentWeekStart, setCurrentWeekStart] = useState<Date>(getMonday(new Date()));
+    const [selectedDay, setSelectedDay] = useState(0); // 0-6 for Mon-Sun
     const [meals, setMeals] = useState<MealPlanItem[]>([]);
     const [loading, setLoading] = useState(true);
     const [showAddModal, setShowAddModal] = useState(false);
-    const [selectedSlot, setSelectedSlot] = useState<{ date: string; mealType: MealType } | null>(null);
+    const [selectedSlot, setSelectedSlot] = useState<{ date: string; mealType: typeof MealType[keyof typeof MealType] } | null>(null);
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -34,7 +35,7 @@ const MealPlanner: React.FC = () => {
         }
     };
 
-    const handleAddMealClick = (date: string, mealType: MealType) => {
+    const handleAddMealClick = (date: string, mealType: typeof MealType[keyof typeof MealType]) => {
         setSelectedSlot({ date, mealType });
         setShowAddModal(true);
     };
@@ -74,18 +75,32 @@ const MealPlanner: React.FC = () => {
 
     const goToPreviousWeek = () => {
         setCurrentWeekStart(addDays(currentWeekStart, -7));
+        setSelectedDay(0);
     };
 
     const goToNextWeek = () => {
         setCurrentWeekStart(addDays(currentWeekStart, 7));
+        setSelectedDay(0);
     };
 
-    const goToThisWeek = () => {
-        setCurrentWeekStart(getMonday(new Date()));
+    // Get meals for selected day
+    const currentDate = addDays(currentWeekStart, selectedDay);
+    const currentDateStr = formatDate(currentDate);
+    const mealsForDay = meals.filter((meal) => meal.date === currentDateStr);
+
+    const mealTypes = [
+        { type: MealType.BREAKFAST, label: 'Breakfast', icon: '🌅' },
+        { type: MealType.LUNCH, label: 'Lunch', icon: '☀️' },
+        { type: MealType.DINNER, label: 'Dinner', icon: '🌙' },
+        { type: MealType.SNACK, label: 'Snacks', icon: '🍿' },
+    ];
+
+    const getMealsForType = (type: string) => {
+        return mealsForDay.filter((meal) => meal.meal_type === type);
     };
 
-    // Calculate weekly nutrition totals
-    const weeklyTotals = meals.reduce(
+    // Calculate daily totals for selected day
+    const dailyTotals = mealsForDay.reduce(
         (acc, meal) => ({
             calories: acc.calories + meal.calories,
             protein: acc.protein + meal.protein,
@@ -95,115 +110,206 @@ const MealPlanner: React.FC = () => {
         { calories: 0, protein: 0, carbs: 0, fats: 0 }
     );
 
-    const dailyAverage = {
-        calories: Math.round(weeklyTotals.calories / 7),
-        protein: Math.round(weeklyTotals.protein / 7),
-        carbs: Math.round(weeklyTotals.carbs / 7),
-        fats: Math.round(weeklyTotals.fats / 7),
-    };
-
     return (
         <Layout>
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Header */}
-                <div className="mb-6">
-                    <h1 className="text-3xl font-bold text-gray-900 mb-2">Meal Planner</h1>
-                    <p className="text-gray-600">Plan your meals for the week</p>
-                </div>
+            <TopBar
+                title="Meal Planner"
+                actions={
+                    <Link to="/shopping-list" className="text-2xl">
+                        🛒
+                    </Link>
+                }
+            />
 
-                {/* Week Navigation */}
-                <div className="flex items-center justify-between mb-6 bg-white rounded-lg shadow p-4">
+            <div className="space-y-4 mt-6">
+                {/* Week Navigator */}
+                <div className="flex items-center justify-between">
                     <button
                         onClick={goToPreviousWeek}
-                        className="px-4 py-2 text-primary-600 hover:bg-primary-50 rounded-lg transition"
+                        className="w-10 h-10 flex items-center justify-center rounded-full bg-surface-elevated text-text-primary hover:bg-surface transition-colors"
                     >
-                        ← Previous Week
+                        ←
                     </button>
-
-                    <div className="flex items-center gap-4">
-                        <h2 className="text-xl font-bold text-gray-900">
-                            {getWeekRangeString(currentWeekStart)}
-                        </h2>
-                        <button
-                            onClick={goToThisWeek}
-                            className="px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded transition"
-                        >
-                            Today
-                        </button>
+                    <div className="text-center">
+                        <p className="text-sm text-text-secondary">Week of</p>
+                        <p className="font-bold text-text-primary">
+                            {currentWeekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}
+                        </p>
                     </div>
-
                     <button
                         onClick={goToNextWeek}
-                        className="px-4 py-2 text-primary-600 hover:bg-primary-50 rounded-lg transition"
+                        className="w-10 h-10 flex items-center justify-center rounded-full bg-surface-elevated text-text-primary hover:bg-surface transition-colors"
                     >
-                        Next Week →
+                        →
                     </button>
                 </div>
 
-                {/* Quick Stats */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4 mb-6">
-                    <div className="bg-white rounded-lg shadow p-4">
-                        <div className="text-sm text-gray-600">Meals Planned</div>
-                        <div className="text-2xl font-bold text-gray-900">{meals.length}</div>
-                    </div>
-                    <div className="bg-orange-50 rounded-lg shadow p-4">
-                        <div className="text-sm text-orange-700 font-medium">Avg Calories/Day</div>
-                        <div className="text-2xl font-bold text-orange-900">{dailyAverage.calories}</div>
-                    </div>
-                    <div className="bg-red-50 rounded-lg shadow p-4">
-                        <div className="text-sm text-red-700 font-medium">Avg Protein/Day</div>
-                        <div className="text-2xl font-bold text-red-900">{dailyAverage.protein}g</div>
-                    </div>
-                    <div className="bg-yellow-50 rounded-lg shadow p-4">
-                        <div className="text-sm text-yellow-700 font-medium">Avg Carbs/Day</div>
-                        <div className="text-2xl font-bold text-yellow-900">{dailyAverage.carbs}g</div>
-                    </div>
-                    <div className="bg-green-50 rounded-lg shadow p-4">
-                        <div className="text-sm text-green-700 font-medium">Avg Fats/Day</div>
-                        <div className="text-2xl font-bold text-green-900">{dailyAverage.fats}g</div>
+                {/* Day Selector - Horizontal Scroll */}
+                <div className="flex gap-2 overflow-x-auto pb-2 -mx-4 px-4" style={{ scrollbarWidth: 'none' }}>
+                    {[0, 1, 2, 3, 4, 5, 6].map((dayIndex) => {
+                        const day = addDays(currentWeekStart, dayIndex);
+                        const dayMeals = meals.filter((m) => m.date === formatDate(day));
+                        const isSelected = selectedDay === dayIndex;
+                        const isToday = formatDate(new Date()) === formatDate(day);
+
+                        return (
+                            <button
+                                key={dayIndex}
+                                onClick={() => setSelectedDay(dayIndex)}
+                                className={`flex-shrink-0 w-16 py-3 rounded-xl text-center transition-all ${isSelected
+                                        ? 'bg-primary text-white scale-105'
+                                        : 'bg-surface text-text-primary hover:bg-surface-elevated'
+                                    }`}
+                            >
+                                <p className="text-xs font-medium opacity-80">
+                                    {getDayName(day).substring(0, 3)}
+                                </p>
+                                <p className="text-xl font-bold my-1">{getDayNumber(day)}</p>
+                                {dayMeals.length > 0 && (
+                                    <div className="flex justify-center gap-0.5">
+                                        {dayMeals.slice(0, 4).map((_, i) => (
+                                            <div
+                                                key={i}
+                                                className={`w-1 h-1 rounded-full ${isSelected ? 'bg-white' : 'bg-primary'
+                                                    }`}
+                                            />
+                                        ))}
+                                    </div>
+                                )}
+                                {isToday && (
+                                    <p className="text-[10px] font-semibold mt-1">TODAY</p>
+                                )}
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {/* Daily Stats Card */}
+                <div className="card">
+                    <h3 className="text-sm font-semibold text-text-secondary mb-3">
+                        Daily Totals
+                    </h3>
+                    <div className="grid grid-cols-4 gap-2">
+                        <div className="text-center p-2 bg-surface-elevated rounded-lg">
+                            <p className="text-xs text-text-secondary">Cal</p>
+                            <p className="text-lg font-bold text-primary">
+                                {Math.round(dailyTotals.calories)}
+                            </p>
+                        </div>
+                        <div className="text-center p-2 bg-surface-elevated rounded-lg">
+                            <p className="text-xs text-text-secondary">Prot</p>
+                            <p className="text-lg font-bold text-text-primary">
+                                {Math.round(dailyTotals.protein)}g
+                            </p>
+                        </div>
+                        <div className="text-center p-2 bg-surface-elevated rounded-lg">
+                            <p className="text-xs text-text-secondary">Carbs</p>
+                            <p className="text-lg font-bold text-text-primary">
+                                {Math.round(dailyTotals.carbs)}g
+                            </p>
+                        </div>
+                        <div className="text-center p-2 bg-surface-elevated rounded-lg">
+                            <p className="text-xs text-text-secondary">Fats</p>
+                            <p className="text-lg font-bold text-text-primary">
+                                {Math.round(dailyTotals.fats)}g
+                            </p>
+                        </div>
                     </div>
                 </div>
 
-                {/* Action Buttons */}
-                <div className="flex gap-3 mb-6">
-                    <Link
-                        to="/shopping-list"
-                        state={{ startDate: formatDate(currentWeekStart), endDate: formatDate(addDays(currentWeekStart, 6)) }}
-                        className="bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition font-medium flex items-center gap-2"
-                    >
-                        🛒 Generate Shopping List
-                    </Link>
+                {/* Meals by Type */}
+                {loading ? (
+                    <div className="flex justify-center items-center py-20">
+                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+                    </div>
+                ) : (
+                    <div className="space-y-4">
+                        {mealTypes.map(({ type, label, icon }) => {
+                            const typeMeals = getMealsForType(type);
+
+                            return (
+                                <div key={type} className="card">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <h3 className="font-bold text-text-primary flex items-center gap-2">
+                                            <span className="text-xl">{icon}</span>
+                                            {label}
+                                        </h3>
+                                        <button
+                                            onClick={() => handleAddMealClick(currentDateStr, type)}
+                                            className="w-8 h-8 flex items-center justify-center rounded-full bg-primary/20 text-primary hover:bg-primary hover:text-white transition-colors"
+                                        >
+                                            +
+                                        </button>
+                                    </div>
+
+                                    {typeMeals.length === 0 ? (
+                                        <div className="text-center py-6 border-2 border-dashed border-border rounded-xl">
+                                            <p className="text-sm text-text-disabled">No meal planned</p>
+                                        </div>
+                                    ) : (
+                                        <div className="space-y-2">
+                                            {typeMeals.map((meal) => (
+                                                <div
+                                                    key={meal.id}
+                                                    onClick={() => handleMealClick(meal.recipe_id)}
+                                                    className="flex items-center gap-3 p-3 bg-surface-elevated rounded-xl cursor-pointer hover:bg-surface transition-colors"
+                                                >
+                                                    {meal.recipe_image_url ? (
+                                                        <img
+                                                            src={meal.recipe_image_url}
+                                                            alt={meal.recipe_title}
+                                                            className="w-12 h-12 rounded-lg object-cover"
+                                                        />
+                                                    ) : (
+                                                        <div className="w-12 h-12 rounded-lg bg-surface flex items-center justify-center text-2xl">
+                                                            🍽️
+                                                        </div>
+                                                    )}
+                                                    <div className="flex-1 min-w-0">
+                                                        <p className="font-semibold text-text-primary truncate">
+                                                            {meal.recipe_title}
+                                                        </p>
+                                                        <p className="text-xs text-text-secondary">
+                                                            {meal.servings} {meal.servings === 1 ? 'serving' : 'servings'} • {Math.round(meal.calories)} kcal
+                                                        </p>
+                                                    </div>
+                                                    <button
+                                                        onClick={(e) => {
+                                                            e.stopPropagation();
+                                                            handleRemoveMeal(meal.id);
+                                                        }}
+                                                        className="w-8 h-8 flex items-center justify-center rounded-full hover:bg-error/20 text-error transition-colors"
+                                                    >
+                                                        ×
+                                                    </button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                )}
+
+                {/* Quick Actions */}
+                <div className="flex gap-3">
                     <Link
                         to="/recipes"
-                        className="bg-white border border-gray-300 px-6 py-3 rounded-lg hover:bg-gray-50 transition font-medium"
+                        className="flex-1 btn-secondary text-center"
                     >
                         Browse Recipes
                     </Link>
                 </div>
-
-                {/* Calendar */}
-                {loading ? (
-                    <div className="flex justify-center items-center py-20">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
-                    </div>
-                ) : (
-                    <WeeklyCalendar
-                        weekStartDate={currentWeekStart}
-                        meals={meals}
-                        onAddMeal={handleAddMealClick}
-                        onRemoveMeal={handleRemoveMeal}
-                        onMealClick={handleMealClick}
-                    />
-                )}
-
-                {/* Add Meal Modal */}
-                <AddMealModal
-                    isOpen={showAddModal}
-                    onClose={() => setShowAddModal(false)}
-                    onAdd={handleAddMeal}
-                    selectedSlot={selectedSlot}
-                />
             </div>
+
+            {/* Add Meal Modal */}
+            <AddMealModal
+                isOpen={showAddModal}
+                onClose={() => setShowAddModal(false)}
+                onAdd={handleAddMeal}
+                selectedSlot={selectedSlot}
+            />
         </Layout>
     );
 };

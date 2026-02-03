@@ -17,9 +17,10 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
     return (
         <div
             onClick={handleClick}
-            className="card overflow-hidden hover:shadow-xl transform hover:-translate-y-1 transition duration-200 cursor-pointer"
+            className="recipe-card cursor-pointer"
         >
-            <div className="relative h-48 bg-gray-200">
+            {/* Image Container */}
+            <div className="relative h-48 bg-surface-elevated">
                 {recipe.image_url ? (
                     <img
                         src={recipe.image_url}
@@ -27,57 +28,88 @@ const RecipeCard: React.FC<RecipeCardProps> = ({ recipe }) => {
                         className="w-full h-full object-cover"
                     />
                 ) : (
-                    <div className="w-full h-full flex items-center justify-center text-gray-400 text-6xl">
+                    <div className="w-full h-full flex items-center justify-center text-6xl">
                         🍽️
                     </div>
                 )}
+
+                {/* Favorite Button (Top Right) */}
+                <button
+                    onClick={(e) => {
+                        e.stopPropagation();
+                        // TODO: Implement favorite functionality
+                    }}
+                    className="absolute top-3 right-3 w-10 h-10 bg-black/40 backdrop-blur-sm rounded-full flex items-center justify-center hover:bg-black/60 transition-colors"
+                >
+                    <span className="text-xl">⭐</span>
+                </button>
             </div>
 
+            {/* Content */}
             <div className="p-4">
-                <h3 className="font-bold text-lg text-gray-900 mb-1 line-clamp-1">{recipe.title}</h3>
-                {recipe.description && (
-                    <p className="text-sm text-gray-600 mb-3 line-clamp-2">{recipe.description}</p>
-                )}
+                {/* Title */}
+                <h3 className="font-bold text-lg text-text-primary mb-2 line-clamp-2">
+                    {recipe.title}
+                </h3>
 
-                <div className="flex items-center gap-3 mb-3 text-xs text-gray-500">
+                {/* Stats Row */}
+                <div className="flex items-center gap-4 text-sm text-text-secondary mb-3">
+                    <span className="flex items-center gap-1">
+                        🔥 {Math.round(recipe.calories_per_serving)} kcal
+                    </span>
                     <span className="flex items-center gap-1">
                         ⏱️ {totalTime} min
                     </span>
                     <span className="flex items-center gap-1">
-                        👥 {recipe.servings} servings
+                        🍽️ {recipe.servings}
                     </span>
                 </div>
 
+                {/* Tags */}
                 {recipe.tags && recipe.tags.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-3">
+                    <div className="flex flex-wrap gap-2 mb-3">
                         {recipe.tags.slice(0, 3).map((tag) => (
                             <span
                                 key={tag.id}
-                                className="px-2 py-1 bg-primary-100 text-primary-700 rounded-full text-xs font-medium"
+                                className="px-2 py-1 bg-primary/20 text-primary rounded-full text-xs font-medium"
                             >
                                 {tag.name}
                             </span>
                         ))}
                         {recipe.tags.length > 3 && (
-                            <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded-full text-xs">
+                            <span className="px-2 py-1 bg-surface-elevated text-text-secondary rounded-full text-xs">
                                 +{recipe.tags.length - 3}
                             </span>
                         )}
                     </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-2 text-xs font-medium">
-                    <div className="bg-orange-50 text-orange-700 px-2 py-1 rounded">
-                        {Math.round(recipe.calories_per_serving)} cal
+                {/* Macros Mini-Grid */}
+                <div className="flex gap-2 text-xs">
+                    <div className="flex-1 bg-surface-elevated rounded-lg px-2 py-1.5 text-center">
+                        <p className="text-text-secondary">Protein</p>
+                        <p className="font-semibold text-text-primary">
+                            {Math.round(recipe.protein_per_serving)}g
+                        </p>
                     </div>
-                    <div className="bg-red-50 text-red-700 px-2 py-1 rounded">
-                        {Math.round(recipe.protein_per_serving)}g protein
+                    <div className="flex-1 bg-surface-elevated rounded-lg px-2 py-1.5 text-center">
+                        <p className="text-text-secondary">Carbs</p>
+                        <p className="font-semibold text-text-primary">
+                            {Math.round(recipe.carbs_per_serving)}g
+                        </p>
+                    </div>
+                    <div className="flex-1 bg-surface-elevated rounded-lg px-2 py-1.5 text-center">
+                        <p className="text-text-secondary">Fats</p>
+                        <p className="font-semibold text-text-primary">
+                            {Math.round(recipe.fats_per_serving)}g
+                        </p>
                     </div>
                 </div>
 
-                <div className="mt-2 text-xs text-gray-500">
+                {/* Author */}
+                <p className="mt-3 text-xs text-text-disabled">
                     by {recipe.author_name}
-                </div>
+                </p>
             </div>
         </div>
     );

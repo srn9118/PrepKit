@@ -3,6 +3,7 @@ import { useLocation, Link } from 'react-router-dom';
 import { mealPlanApi } from '../api/meal-plan';
 import type { ShoppingListResponse } from '../types/meal-plan';
 import Layout from '../components/Layout';
+import TopBar from '../components/TopBar';
 import { getMonday, formatDate, addDays } from '../utils/dateHelpers';
 
 const ShoppingList: React.FC = () => {
@@ -48,6 +49,12 @@ const ShoppingList: React.FC = () => {
         setCheckedItems(newChecked);
     };
 
+    const clearCheckedItems = () => {
+        if (checkedItems.size === 0) return;
+        if (!window.confirm(`Clear ${checkedItems.size} checked items?`)) return;
+        setCheckedItems(new Set());
+    };
+
     const handlePrint = () => {
         window.print();
     };
@@ -55,8 +62,9 @@ const ShoppingList: React.FC = () => {
     if (loading) {
         return (
             <Layout>
-                <div className="flex justify-center items-center min-h-screen">
-                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary-600"></div>
+                <TopBar title="Shopping List" showBack />
+                <div className="flex justify-center items-center py-20">
+                    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
                 </div>
             </Layout>
         );
@@ -65,14 +73,16 @@ const ShoppingList: React.FC = () => {
     if (!shoppingList || shoppingList.items.length === 0) {
         return (
             <Layout>
-                <div className="max-w-4xl mx-auto px-4 py-20 text-center">
+                <TopBar title="Shopping List" showBack />
+                <div className="text-center py-20">
                     <div className="text-6xl mb-4">🛒</div>
-                    <h2 className="text-2xl font-bold text-gray-900 mb-2">No ingredients needed</h2>
-                    <p className="text-gray-600 mb-6">Add meals to your planner to generate a shopping list</p>
-                    <Link
-                        to="/planner"
-                        className="inline-block bg-primary-600 text-white px-6 py-3 rounded-lg hover:bg-primary-700 transition font-medium"
-                    >
+                    <h2 className="text-2xl font-bold text-text-primary mb-2">
+                        No ingredients needed
+                    </h2>
+                    <p className="text-text-secondary mb-6">
+                        Add meals to your planner to generate a shopping list
+                    </p>
+                    <Link to="/planner" className="btn-primary inline-block">
                         Go to Meal Planner
                     </Link>
                 </div>
@@ -80,105 +90,196 @@ const ShoppingList: React.FC = () => {
         );
     }
 
+    const checkedCount = checkedItems.size;
+    const totalCount = shoppingList.total_items;
+    const uncheckedItems = shoppingList.items.filter(
+        (item) => !checkedItems.has(item.ingredient_id)
+    );
+    const checkedItemsList = shoppingList.items.filter((item) =>
+        checkedItems.has(item.ingredient_id)
+    );
+
     return (
         <Layout>
-            <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                {/* Header */}
-                <div className="mb-6">
-                    <Link
-                        to="/planner"
-                        className="text-primary-600 hover:text-primary-700 font-medium mb-4 inline-block"
+            <TopBar
+                title="Shopping List"
+                showBack
+                actions={
+                    <button
+                        onClick={handlePrint}
+                        className="w-10 h-10 flex items-center justify-center rounded-full hover:bg-surface-elevated transition-colors print:hidden"
                     >
-                        ← Back to Planner
-                    </Link>
-                    <div className="flex justify-between items-start">
-                        <div>
-                            <h1 className="text-3xl font-bold text-gray-900 mb-2">Shopping List</h1>
-                            <p className="text-gray-600">
-                                {shoppingList.start_date} to {shoppingList.end_date}
-                            </p>
-                        </div>
-                        <button
-                            onClick={handlePrint}
-                            className="bg-white border border-gray-300 px-4 py-2 rounded-lg hover:bg-gray-50 transition font-medium print:hidden"
-                        >
-                            🖨️ Print
-                        </button>
-                    </div>
-                </div>
+                        <span className="text-xl">🖨️</span>
+                    </button>
+                }
+            />
 
-                {/* Summary */}
-                <div className="bg-primary-50 border border-primary-200 rounded-lg p-4 mb-6">
+            <div className="space-y-4 mt-6">
+                {/* Week Range */}
+                <div className="card">
                     <div className="flex items-center justify-between">
                         <div>
-                            <p className="text-sm text-primary-700 font-medium">Total Items</p>
-                            <p className="text-2xl font-bold text-primary-900">{shoppingList.total_items}</p>
+                            <p className="text-xs text-text-secondary uppercase tracking-wide">
+                                Week Range
+                            </p>
+                            <p className="text-sm font-semibold text-text-primary mt-1">
+                                {new Date(startDate).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                })}{' '}
+                                -{' '}
+                                {new Date(endDate).toLocaleDateString('en-US', {
+                                    month: 'short',
+                                    day: 'numeric',
+                                    year: 'numeric',
+                                })}
+                            </p>
                         </div>
-                        <div>
-                            <p className="text-sm text-primary-700 font-medium">Checked Off</p>
-                            <p className="text-2xl font-bold text-primary-900">
-                                {checkedItems.size} / {shoppingList.total_items}
+                        <div className="text-right">
+                            <p className="text-xs text-text-secondary uppercase tracking-wide">
+                                Progress
+                            </p>
+                            <p className="text-2xl font-bold text-primary mt-1">
+                                {Math.round((checkedCount / totalCount) * 100)}%
                             </p>
                         </div>
                     </div>
+
+                    {/* Progress Bar */}
+                    <div className="mt-3 h-2 bg-surface-elevated rounded-full overflow-hidden">
+                        <div
+                            className="h-full bg-primary transition-all duration-500 rounded-full"
+                            style={{ width: `${(checkedCount / totalCount) * 100}%` }}
+                        />
+                    </div>
                 </div>
 
-                {/* Shopping List Items */}
-                <div className="bg-white rounded-lg shadow">
-                    <div className="p-6">
-                        <h2 className="text-xl font-bold text-gray-900 mb-4">Ingredients</h2>
+                {/* Summary Stats */}
+                <div className="grid grid-cols-2 gap-3">
+                    <div className="card text-center">
+                        <p className="text-sm text-text-secondary">Total Items</p>
+                        <p className="text-3xl font-bold text-text-primary mt-1">
+                            {totalCount}
+                        </p>
+                    </div>
+                    <div className="card text-center">
+                        <p className="text-sm text-text-secondary">Checked</p>
+                        <p className="text-3xl font-bold text-primary mt-1">
+                            {checkedCount}
+                        </p>
+                    </div>
+                </div>
+
+                {/* Clear Checked Button */}
+                {checkedCount > 0 && (
+                    <button
+                        onClick={clearCheckedItems}
+                        className="w-full py-3 bg-error/20 text-error font-semibold rounded-xl hover:bg-error/30 transition-colors"
+                    >
+                        Clear {checkedCount} Checked Item{checkedCount !== 1 ? 's' : ''}
+                    </button>
+                )}
+
+                {/* Unchecked Items */}
+                {uncheckedItems.length > 0 && (
+                    <div>
+                        <h2 className="text-lg font-bold text-text-primary mb-3">
+                            To Buy ({uncheckedItems.length})
+                        </h2>
                         <div className="space-y-2">
-                            {shoppingList.items.map((item) => (
+                            {uncheckedItems.map((item) => (
                                 <div
                                     key={item.ingredient_id}
                                     onClick={() => toggleItem(item.ingredient_id)}
-                                    className={`flex items-center gap-3 p-3 rounded-lg border-2 cursor-pointer transition ${checkedItems.has(item.ingredient_id)
-                                        ? 'border-green-200 bg-green-50'
-                                        : 'border-gray-200 hover:border-gray-300'
-                                        }`}
+                                    className="card flex items-center gap-4 cursor-pointer hover:bg-surface-elevated transition-all active:scale-[0.98]"
                                 >
-                                    <div
-                                        className={`w-5 h-5 rounded border-2 flex items-center justify-center ${checkedItems.has(item.ingredient_id)
-                                            ? 'bg-green-500 border-green-500'
-                                            : 'border-gray-300'
-                                            }`}
-                                    >
-                                        {checkedItems.has(item.ingredient_id) && (
-                                            <span className="text-white text-xs">✓</span>
-                                        )}
+                                    {/* Checkbox */}
+                                    <div className="w-6 h-6 rounded-lg border-2 border-border flex items-center justify-center flex-shrink-0">
+                                        {/* Empty */}
                                     </div>
-                                    <div className="flex-1">
-                                        <span
-                                            className={`font-medium ${checkedItems.has(item.ingredient_id)
-                                                ? 'text-gray-500 line-through'
-                                                : 'text-gray-900'
-                                                }`}
-                                        >
+
+                                    {/* Item Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-semibold text-text-primary">
                                             {item.ingredient_name}
-                                        </span>
+                                        </p>
                                     </div>
-                                    <div
-                                        className={`font-semibold ${checkedItems.has(item.ingredient_id) ? 'text-gray-500' : 'text-gray-700'
-                                            }`}
-                                    >
+
+                                    {/* Amount */}
+                                    <div className="font-bold text-primary text-right">
                                         {item.total_amount} {item.unit}
                                     </div>
                                 </div>
                             ))}
                         </div>
                     </div>
-                </div>
+                )}
 
-                {/* Tips */}
-                <div className="mt-6 bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h3 className="font-semibold text-blue-900 mb-2">💡 Shopping Tips</h3>
-                    <ul className="text-sm text-blue-800 space-y-1">
-                        <li>• Check your pantry before shopping to avoid duplicates</li>
-                        <li>• Organize items by store section for efficient shopping</li>
-                        <li>• Consider buying fresh ingredients closer to meal day</li>
-                    </ul>
+                {/* Checked Items */}
+                {checkedItemsList.length > 0 && (
+                    <div>
+                        <h2 className="text-lg font-bold text-text-secondary mb-3">
+                            Checked ({checkedItemsList.length})
+                        </h2>
+                        <div className="space-y-2">
+                            {checkedItemsList.map((item) => (
+                                <div
+                                    key={item.ingredient_id}
+                                    onClick={() => toggleItem(item.ingredient_id)}
+                                    className="card flex items-center gap-4 cursor-pointer opacity-50 hover:opacity-70 transition-all active:scale-[0.98]"
+                                >
+                                    {/* Checkbox - Checked */}
+                                    <div className="w-6 h-6 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
+                                        <span className="text-white text-sm">✓</span>
+                                    </div>
+
+                                    {/* Item Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="font-semibold text-text-secondary line-through">
+                                            {item.ingredient_name}
+                                        </p>
+                                    </div>
+
+                                    {/* Amount */}
+                                    <div className="font-bold text-text-secondary line-through text-right">
+                                        {item.total_amount} {item.unit}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* Tips Card */}
+                <div className="card bg-primary/10 border border-primary/20">
+                    <div className="flex items-start gap-3">
+                        <span className="text-2xl">💡</span>
+                        <div>
+                            <h3 className="font-bold text-text-primary mb-2">
+                                Shopping Tips
+                            </h3>
+                            <ul className="text-sm text-text-secondary space-y-1">
+                                <li>• Check your pantry before shopping</li>
+                                <li>• Group items by store section</li>
+                                <li>• Buy fresh ingredients closer to meal day</li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
+
+            {/* Print Styles */}
+            <style>{`
+        @media print {
+          body {
+            background: white !important;
+          }
+          .card {
+            background: white !important;
+            border: 1px solid #ccc !important;
+          }
+        }
+      `}</style>
         </Layout>
     );
 };

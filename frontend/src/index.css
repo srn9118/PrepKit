@@ -1,27 +1,157 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 @layer base {
+  * {
+    transition: background-color 0.2s, color 0.2s;
+  }
+
   body {
-    @apply bg-gray-50 text-gray-900;
+    background-color: #1a1a1a;
+    color: #ffffff;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'SF Pro', 'Roboto', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  html {
+    scroll-behavior: smooth;
   }
 }
 
 @layer components {
-  .btn-primary {
-    @apply w-full bg-primary-600 text-white py-2 px-4 rounded-lg hover:bg-primary-700 transition duration-200 font-medium;
-  }
-  
-  .btn-secondary {
-    @apply w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-lg hover:bg-gray-300 transition duration-200 font-medium;
-  }
-  
-  .input-field {
-    @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition;
-  }
-  
+
+  /* Cards */
   .card {
-    @apply bg-white rounded-lg shadow-md;
+    background-color: #2d2d2d;
+    border-radius: 20px;
+    padding: 1rem;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   }
+
+  .card-hover {
+    background-color: #2d2d2d;
+    border-radius: 20px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s;
+  }
+
+  .card-hover:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    transform: scale(1.02);
+  }
+
+  /* Buttons */
+  .btn-primary {
+    background-color: #4CAF50;
+    color: white;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    transition: all 0.2s;
+  }
+
+  .btn-primary:hover {
+    background-color: #388E3C;
+  }
+
+  .btn-primary:active {
+    transform: scale(0.95);
+  }
+
+  .btn-secondary {
+    background-color: #2d2d2d;
+    color: #ffffff;
+    font-weight: 600;
+    padding: 0.75rem 1.5rem;
+    border-radius: 12px;
+    transition: all 0.2s;
+  }
+
+  .btn-secondary:hover {
+    background-color: #3a3a3a;
+  }
+
+  .btn-secondary:active {
+    transform: scale(0.95);
+  }
+
+  /* Input Fields */
+  .input-field {
+    background-color: #2d2d2d;
+    border: 1px solid #404040;
+    color: #ffffff;
+    padding: 0.75rem 1rem;
+    border-radius: 12px;
+    outline: none;
+    transition: all 0.2s;
+  }
+
+  .input-field:focus {
+    border-color: #4CAF50;
+    box-shadow: 0 0 0 2px rgba(76, 175, 80, 0.1);
+  }
+
+  /* Tabs */
+  .tab-active {
+    color: #4CAF50;
+    border-bottom: 2px solid #4CAF50;
+    font-weight: 600;
+  }
+
+  .tab-inactive {
+    color: #a0a0a0;
+    transition: color 0.2s;
+  }
+
+  .tab-inactive:hover {
+    color: #ffffff;
+  }
+
+  /* Recipe Card */
+  .recipe-card {
+    background-color: #2d2d2d;
+    border-radius: 20px;
+    overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: all 0.2s;
+  }
+
+  .recipe-card:hover {
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3);
+    transform: scale(1.02);
+  }
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background-color: #1a1a1a;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: #3a3a3a;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: #4CAF50;
+}
+
+/* Selection */
+::selection {
+  background-color: rgba(76, 175, 80, 0.3);
+  color: white;
+}
+
+/* Safe area for mobile devices */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
 }

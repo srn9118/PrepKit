@@ -2,117 +2,194 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import Layout from '../components/Layout';
+import TopBar from '../components/TopBar';
+import ProgressCircle from '../components/ProgressCircle';
+import MacroBar from '../components/MacroBar';
+import SkeletonLoader from '../components/SkeletonLoader';
 
 const Dashboard: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [loading, setLoading] = React.useState(true);
+
+  // Simulate loading
+  React.useEffect(() => {
+    const timer = setTimeout(() => setLoading(false), 500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Mock data - replace with real data later
+  const dailyCalories = user?.daily_calories || 2000;
+  const consumedCalories = 1450; // TODO: Get from meal plan
+
+  const macros = {
+    protein: { current: 85, goal: user?.daily_protein || 150 },
+    carbs: { current: 180, goal: user?.daily_carbs || 250 },
+    fats: { current: 45, goal: user?.daily_fats || 65 },
+  };
+
+  const quickActions = [
+    {
+      icon: '📝',
+      title: 'Plan Meals',
+      subtitle: 'Schedule your week',
+      gradient: 'from-green-600 to-green-700',
+      path: '/planner',
+    },
+    {
+      icon: '🍳',
+      title: 'Browse Recipes',
+      subtitle: 'Find new ideas',
+      gradient: 'from-orange-600 to-orange-700',
+      path: '/recipes',
+    },
+    {
+      icon: '🛒',
+      title: 'Shopping List',
+      subtitle: 'Get groceries',
+      gradient: 'from-blue-600 to-blue-700',
+      path: '/shopping-list',
+    },
+  ];
 
   return (
     <Layout>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Welcome back, {user?.full_name}! 👋
-          </h1>
-          <p className="mt-2 text-gray-600">Here's your meal prep overview</p>
+      <TopBar title="PrepKit" />
+
+      {loading ? (
+        <div className="mt-6">
+          <SkeletonLoader type="dashboard" />
         </div>
+      ) : (
+        <div className="space-y-6 mt-6">
+          {/* Welcome Section */}
+          <div>
+            <h2 className="text-2xl font-bold text-text-primary">
+              Hello, {user?.full_name?.split(' ')[0] || 'there'}! 👋
+            </h2>
+            <p className="text-text-secondary mt-1">
+              {new Date().toLocaleDateString('en-US', {
+                weekday: 'long',
+                month: 'short',
+                day: 'numeric'
+              })}
+            </p>
+          </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-          <div className="card p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Daily Calories</p>
-                <p className="mt-2 text-3xl font-bold text-gray-900">{user?.daily_calories}</p>
-              </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <span className="text-2xl">🔥</span>
-              </div>
+          {/* Daily Summary Card */}
+          <div className="card">
+            <h3 className="text-lg font-bold text-text-primary mb-4">
+              Daily Summary
+            </h3>
+
+            {/* Calorie Progress Circle */}
+            <div className="flex justify-center mb-6">
+              <ProgressCircle
+                current={consumedCalories}
+                goal={dailyCalories}
+                size={200}
+                strokeWidth={12}
+              />
+            </div>
+
+            {/* Macros Bars */}
+            <div className="space-y-4">
+              <MacroBar
+                label="Protein"
+                current={macros.protein.current}
+                goal={macros.protein.goal}
+                color="blue"
+                icon="🥩"
+              />
+              <MacroBar
+                label="Carbs"
+                current={macros.carbs.current}
+                goal={macros.carbs.goal}
+                color="yellow"
+                icon="🍞"
+              />
+              <MacroBar
+                label="Fats"
+                current={macros.fats.current}
+                goal={macros.fats.goal}
+                color="green"
+                icon="🥑"
+              />
+            </div>
+
+            {/* Remaining Calories */}
+            <div className="mt-4 p-3 bg-surface-elevated rounded-xl text-center">
+              <p className="text-sm text-text-secondary">Remaining Today</p>
+              <p className="text-2xl font-bold text-primary">
+                {dailyCalories - consumedCalories} kcal
+              </p>
             </div>
           </div>
 
-          <div className="card p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Protein</p>
-                <p className="mt-2 text-3xl font-bold text-gray-900">{user?.daily_protein}g</p>
-              </div>
-              <div className="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
-                <span className="text-2xl">🥩</span>
-              </div>
+          {/* Quick Actions */}
+          <div>
+            <h3 className="text-lg font-bold text-text-primary mb-3">
+              Quick Actions
+            </h3>
+            <div className="grid grid-cols-1 gap-3">
+              {quickActions.map((action, index) => (
+                <button
+                  key={index}
+                  onClick={() => navigate(action.path)}
+                  className={`bg-gradient-to-r ${action.gradient} rounded-2xl p-4 flex items-center gap-4 text-white hover:scale-[1.02] active:scale-95 transition-transform`}
+                >
+                  <div className="text-4xl">{action.icon}</div>
+                  <div className="text-left flex-1">
+                    <p className="font-bold text-lg">{action.title}</p>
+                    <p className="text-white/80 text-sm">{action.subtitle}</p>
+                  </div>
+                  <div className="text-2xl">→</div>
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="card p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-gray-600">Carbs</p>
-                <p className="mt-2 text-3xl font-bold text-gray-900">{user?.daily_carbs}g</p>
-              </div>
-              <div className="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
-                <span className="text-2xl">🍞</span>
-              </div>
+          {/* Today's Meals Preview */}
+          <div>
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-bold text-text-primary">
+                Today's Meals
+              </h3>
+              <button
+                onClick={() => navigate('/planner')}
+                className="text-sm text-primary font-semibold"
+              >
+                View All →
+              </button>
+            </div>
+
+            {/* Empty State */}
+            <div className="card text-center py-12">
+              <p className="text-6xl mb-3">🍽️</p>
+              <p className="text-text-secondary">No meals planned for today</p>
+              <button
+                onClick={() => navigate('/planner')}
+                className="mt-4 btn-primary inline-block"
+              >
+                Plan Your Day
+              </button>
             </div>
           </div>
 
-          <div className="card p-6">
-            <div className="flex items-center justify-between">
+          {/* Nutrition Tips */}
+          <div className="card bg-gradient-to-br from-primary/10 to-accent/10 border border-primary/20">
+            <div className="flex items-start gap-3">
+              <div className="text-2xl">💡</div>
               <div>
-                <p className="text-sm font-medium text-gray-600">Fats</p>
-                <p className="mt-2 text-3xl font-bold text-gray-900">{user?.daily_fats}g</p>
-              </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <span className="text-2xl">🥑</span>
+                <h4 className="font-bold text-text-primary mb-1">Tip of the Day</h4>
+                <p className="text-sm text-text-secondary">
+                  Aim to eat protein with every meal to stay fuller longer and support muscle recovery.
+                </p>
               </div>
             </div>
           </div>
         </div>
-
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="card p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Quick Actions</h2>
-            <div className="space-y-3">
-              <button onClick={() => navigate('/planner')} className="w-full text-left px-4 py-3 bg-primary-50 hover:bg-primary-100 rounded-lg transition">
-                <div className="flex items-center">
-                  <span className="text-2xl mr-3">📝</span>
-                  <div>
-                    <p className="font-medium text-gray-900">Plan your meals</p>
-                    <p className="text-sm text-gray-600">Schedule recipes for the week</p>
-                  </div>
-                </div>
-              </button>
-
-              <button onClick={() => navigate('/recipes')} className="w-full text-left px-4 py-3 bg-primary-50 hover:bg-primary-100 rounded-lg transition">
-                <div className="flex items-center">
-                  <span className="text-2xl mr-3">🍳</span>
-                  <div>
-                    <p className="font-medium text-gray-900">Browse recipes</p>
-                    <p className="text-sm text-gray-600">Find new meal ideas</p>
-                  </div>
-                </div>
-              </button>
-
-              <button onClick={() => navigate('/shopping-list')} className="w-full text-left px-4 py-3 bg-primary-50 hover:bg-primary-100 rounded-lg transition">
-                <div className="flex items-center">
-                  <span className="text-2xl mr-3">🛒</span>
-                  <div>
-                    <p className="font-medium text-gray-900">Shopping list</p>
-                    <p className="text-sm text-gray-600">Generate your grocery list</p>
-                  </div>
-                </div>
-              </button>
-            </div>
-          </div>
-
-          <div className="card p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">This Week's Plan</h2>
-            <div className="text-center py-8 text-gray-500">
-              <p className="text-4xl mb-2">🗓️</p>
-              <p>No meals planned yet</p>
-              <p className="text-sm mt-1">Start planning your week!</p>
-            </div>
-          </div>
-        </div>
-      </div>
+      )}
     </Layout>
   );
 };
